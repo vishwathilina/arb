@@ -5,8 +5,8 @@
 
 // ============ CONFIGURATION ============
 const CONFIG = {
-  targetLat: 6.8206,        // Target latitude
-  targetLon: 80.0390,       // Target longitude
+  targetLat: 6.821,        // Target latitude
+  targetLon: 80.040,       // Target longitude
   triggerRadius: 50,        // Distance in meters
   modelPath: 'assets/logo2.glb',
   modelScale: 1,
