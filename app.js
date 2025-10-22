@@ -13,18 +13,33 @@ const CONFIG = {
   rotationSpeed: 0.005
 };
 
-// ============ DOM ELEMENTS ============
-const latEl = document.getElementById('lat');
-const lonEl = document.getElementById('lon');
-const distEl = document.getElementById('distance');
-const statusEl = document.getElementById('status');
-const arButton = document.getElementById('arButton');
-
-// ============ THREE.JS SETUP ============
+// ============ GLOBAL VARS ============
 let scene, camera, renderer, model;
 let currentLat = null, currentLon = null, currentDistance = null;
+let latEl, lonEl, distEl, statusEl, arButton;
 
+// ============ WAIT FOR DOM ============
+document.addEventListener('DOMContentLoaded', () => {
+  // Get DOM elements
+  latEl = document.getElementById('lat');
+  lonEl = document.getElementById('lon');
+  distEl = document.getElementById('distance');
+  statusEl = document.getElementById('status');
+  arButton = document.getElementById('arButton');
+  
+  console.log('DOM ready. Initializing...');
+  
+  // Initialize Three.js
+  initThreeJS();
+  
+  // Start GPS tracking
+  startGPS();
+});
+
+// ============ THREE.JS SETUP ============
 function initThreeJS() {
+  console.log('Initializing Three.js...');
+  
   // Scene
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x000000);
@@ -38,7 +53,7 @@ function initThreeJS() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.xr.enabled = true;
-  document.body.insertBefore(renderer.domElement, document.body.firstChild);
+  document.body.appendChild(renderer.domElement);
   
   // Lighting
   const light = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -61,11 +76,13 @@ function initThreeJS() {
     }
     renderer.render(scene, camera);
   });
+  
+  console.log('Three.js initialized');
 }
 
 function loadModel() {
-  // For now, create a simple cube as placeholder
-  // Replace with GLTFLoader for .glb files when ready
+  console.log('Loading model...');
+  // Create a simple rotating cube for now
   const geometry = new THREE.BoxGeometry(1, 1, 1);
   const material = new THREE.MeshStandardMaterial({ 
     color: 0x0084ff,
@@ -76,12 +93,17 @@ function loadModel() {
   model.scale.set(CONFIG.modelScale, CONFIG.modelScale, CONFIG.modelScale);
   scene.add(model);
   
-  // TODO: Load actual GLB model
+  console.log('Model loaded (cube placeholder)');
+  
+  // TODO: Load actual GLB model when ready
   // const loader = new THREE.GLTFLoader();
   // loader.load(CONFIG.modelPath, (gltf) => {
   //   model = gltf.scene;
   //   model.scale.set(CONFIG.modelScale, CONFIG.modelScale, CONFIG.modelScale);
   //   scene.add(model);
+  //   console.log('GLB model loaded');
+  // }, undefined, (error) => {
+  //   console.error('Error loading model:', error);
   // });
 }
 
@@ -117,7 +139,7 @@ function updateUI(lat, lon, distance) {
   const inRange = distance <= CONFIG.triggerRadius;
   
   if (inRange) {
-    statusEl.innerHTML = '✓ <b>Within range!</b><br><small>AR ready to view</small>';
+    statusEl.innerHTML = '✓ <b>Within range!</b><br><small>AR ready</small>';
     statusEl.style.color = '#00ff00';
     arButton.classList.add('active');
   } else {
@@ -126,14 +148,15 @@ function updateUI(lat, lon, distance) {
     statusEl.style.color = '#ffaa00';
     arButton.classList.remove('active');
   }
-  
-  console.log(`Distance: ${distance.toFixed(1)}m | In range: ${inRange}`);
 }
 
 function startGPS() {
+  console.log('Starting GPS tracking...');
+  
   if (!navigator.geolocation) {
     statusEl.textContent = '❌ Geolocation not supported';
     statusEl.style.color = '#ff4444';
+    console.error('Geolocation not available');
     return;
   }
   
@@ -167,8 +190,11 @@ function startGPS() {
 
 // ============ WEBXR AR MODE ============
 async function enterARMode() {
+  console.log('Entering AR mode...');
+  
   if (!navigator.xr) {
     alert('WebXR not supported on this device');
+    console.error('WebXR not available');
     return;
   }
   
@@ -178,6 +204,7 @@ async function enterARMode() {
       domOverlay: { root: document.body }
     });
     renderer.xr.setSession(session);
+    console.log('AR session started');
   } catch (err) {
     console.error('AR session error:', err);
     alert('Could not start AR session: ' + err.message);
@@ -185,8 +212,8 @@ async function enterARMode() {
 }
 
 // ============ EVENT LISTENERS ============
-arButton.addEventListener('click', enterARMode);
-
-// ============ INITIALIZATION ============
-initThreeJS();
-startGPS();
+document.addEventListener('DOMContentLoaded', () => {
+  if (arButton) {
+    arButton.addEventListener('click', enterARMode);
+  }
+});
