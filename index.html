@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>NSBM Anniversary AR</title>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@2.4.1/src/tracking/geolocation/GPS.js"></script> <!-- For location -->
+</head>
+<body>
+  <a-scene embedded arjs="sourceType: webcam;" gps-entity-place="cameraHeight: 1.5;">
+    <!-- GPS Location Trigger: Replace with NSBM coords (lat, lng) -->
+    <a-entity gps-entity-place="latitude: 6.820; longitude: 80.039; radius: 10;"> <!-- Example Sri Lanka coords; get exact from Google Maps -->
+      <a-entity gltf-model="/public/logo1.glb" position="0 0 -2" scale="1 1 1" animation="property: rotation; to: 0 360 0; loop: true; dur: 10000"></a-entity> <!-- Your 3D model: rotating for demo -->
+    </a-entity>
+    <!-- Fallback marker if GPS off -->
+    <a-marker preset="hiro">
+      <a-entity gltf-model="/public/logo1.glb" position="0 0 -1" scale="0.5 0.5 0.5"></a-entity>
+    </a-marker>
+    <a-entity camera></a-entity>
+  </a-scene>
+</body>
+</html>
