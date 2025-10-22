@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>WebAR model-viewer GPS demo</title>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <style>
+    body{font-family: Arial, Helvetica, sans-serif; margin:0; background:#111; color:#eee}
+    #info{position:fixed; top:10px; left:10px; background:rgba(0,0,0,0.6); padding:10px; border-radius:6px; z-index:10}
+    #viewer-wrap{display:flex; justify-content:center; align-items:center; height:100vh}
+    model-viewer{width:100%; max-width:800px; height:70vh; background:#222}
+    #ar-btn{display:block; margin-top:8px}
+  </style>
+</head>
+<body>
+  <div id="info">
+    <div>Lat: <span id="6.820">--</span></div>
+    <div>Lon: <span id="80.039">--</span></div>
+    <div>Distance: <span id="distance">--</span> m</div>
+    <div>Status: <span id="status">Initializing...</span></div>
+  </div>
+
+  <div id="viewer-wrap">
+    <model-viewer id="mv" src="logo2.glb" alt="3D model" ar ar-modes="webxr scene-viewer quick-look" camera-controls ios-src="model.usdz"></model-viewer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

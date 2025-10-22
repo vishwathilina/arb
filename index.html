@@ -2,55 +2,80 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>NSBM Anniversary AR</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NSBM Anniversary AR — GPS-Anchored 3D Model</title>
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@2.4.1/src/tracking/geolocation/GPS.js"></script> <!-- For location -->
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@2.4.1/src/tracking/geolocation/GPS.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
+    #info {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.75);
+      color: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      z-index: 100;
+      font-size: 13px;
+      line-height: 1.6;
+      max-width: 200px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+    }
+    #info p { margin: 5px 0; }
+    #info span { font-weight: bold; color: #0f0; }
+    #status { 
+      margin-top: 10px; 
+      padding-top: 10px; 
+      border-top: 1px solid rgba(255,255,255,0.2); 
+      font-size: 12px;
+    }
+    a-scene { width: 100%; height: 100vh; }
+  </style>
 </head>
 <body>
-  <div id="info" style="position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.7); padding: 10px; font-family: Arial; z-index: 10; border-radius: 5px;">
-    <p>Latitude: <span id="6.820">--</span></p>
-    <p>Longitude: <span id="80.039">--</span></p>
-    <p>Distance: <span id="distance">--</span> m</p>
-    <p>Status: <span id="status">Initializing GPS...</span></p>
+  <div id="info">
+    <p>📍 Latitude: <span id="lat">--</span></p>
+    <p>📍 Longitude: <span id="lon">--</span></p>
+    <p>📏 Distance: <span id="distance">--</span> m</p>
+    <div id="status">Initializing GPS...</div>
   </div>
 
   <a-scene embedded arjs="sourceType: webcam;" gps-entity-place="cameraHeight: 1.5;">
-    <!-- GPS Location: NSBM Campus (replace with your exact coordinates) -->
+    <!-- GPS-Anchored Model -->
     <a-entity id="modelEntity" gps-entity-place="latitude: 6.8206; longitude: 80.0390; radius: 50;">
       <a-entity gltf-model="/public/logo1.glb" position="0 0 -2" scale="1 1 1" animation="property: rotation; to: 0 360 0; loop: true; dur: 10000;"></a-entity>
     </a-entity>
 
-    <!-- Fallback marker if GPS not available -->
+    <!-- Fallback marker (QR/Hiro marker) for testing without GPS -->
     <a-marker preset="hiro">
-      <a-entity gltf-model="/public/logo1.glb" position="0 0 -1" scale="0.5 0.5 0.5"></a-entity>
+      <a-entity gltf-model="/public/logo1.glb" position="0 0 -1" scale="0.5 0.5 0.5" animation="property: rotation; to: 0 360 0; loop: true; dur: 10000;"></a-entity>
     </a-marker>
 
     <a-entity camera></a-entity>
   </a-scene>
 
   <script>
-    // Target location (NSBM Campus in Sri Lanka - update with exact coordinates)
-    const TARGET_LAT = 6.8206;
-    const TARGET_LON = 80.0390;
-    const TRIGGER_RADIUS = 50; // Show model when within 50 meters
+    // ============ CONFIGURATION ============
+    // Change these values to match your target location and trigger settings
+    const TARGET_LAT = 6.8206;       // Target latitude (NSBM Campus example)
+    const TARGET_LON = 80.0390;      // Target longitude
+    const TRIGGER_RADIUS = 50;       // Distance in meters to show model
+    const MODEL_HEIGHT = 0;          // Height offset (meters above ground)
+    const MODEL_SCALE = 1;           // Scale multiplier for the 3D model
+    const UPDATE_INTERVAL = 1000;    // Location update interval (ms)
 
-    // Update display info
-    function updateInfo(lat, lon, distance) {
-      document.getElementById('lat').textContent = lat.toFixed(4);
-      document.getElementById('lon').textContent = lon.toFixed(4);
-      document.getElementById('distance').textContent = distance.toFixed(1);
-      
-      if (distance <= TRIGGER_RADIUS) {
-        document.getElementById('status').textContent = '✓ Model visible!';
-        document.getElementById('status').style.color = '#00ff00';
-      } else {
-        document.getElementById('status').textContent = `Get closer (${TRIGGER_RADIUS}m away)`;
-        document.getElementById('status').style.color = '#ffaa00';
-      }
-    }
+    // ============ DOM ELEMENTS ============
+    const latEl = document.getElementById('lat');
+    const lonEl = document.getElementById('lon');
+    const distEl = document.getElementById('distance');
+    const statusEl = document.getElementById('status');
+    const modelEntity = document.getElementById('modelEntity');
 
-    // Calculate distance between two coordinates (Haversine formula)
+    // ============ UTILITY FUNCTIONS ============
+    // Calculate distance between two GPS points using Haversine formula
     function calculateDistance(lat1, lon1, lat2, lon2) {
       const R = 6371e3; // Earth radius in meters
       const φ1 = (lat1 * Math.PI) / 180;
@@ -63,11 +88,47 @@
         Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-      return R * c; // Distance in meters
+      return R * c; // Returns distance in meters
     }
 
-    // Request GPS permission and track location
+    // Calculate bearing (direction) from user to target
+    function calculateBearing(lat1, lon1, lat2, lon2) {
+      const φ1 = (lat1 * Math.PI) / 180;
+      const φ2 = (lat2 * Math.PI) / 180;
+      const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+      const y = Math.sin(Δλ) * Math.cos(φ2);
+      const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+      const bearing = Math.atan2(y, x) * (180 / Math.PI);
+
+      return (bearing + 360) % 360; // Returns 0-360 degrees
+    }
+
+    // Update UI with current position and distance
+    function updateInfo(lat, lon, distance) {
+      latEl.textContent = lat.toFixed(4);
+      lonEl.textContent = lon.toFixed(4);
+      distEl.textContent = distance.toFixed(1);
+
+      const inRange = distance <= TRIGGER_RADIUS;
+
+      if (inRange) {
+        statusEl.innerHTML = '✓ <b>Model visible!</b><br><small>Walk around to view all angles</small>';
+        statusEl.style.color = '#00ff00';
+      } else {
+        const distanceRemaining = (distance - TRIGGER_RADIUS).toFixed(1);
+        statusEl.innerHTML = `⚠ Get closer<br><small>${distanceRemaining}m more to go</small>`;
+        statusEl.style.color = '#ffaa00';
+      }
+
+      console.log(`GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)} | Distance: ${distance.toFixed(1)}m | In range: ${inRange}`);
+    }
+
+    // ============ GEOLOCATION ============
     if (navigator.geolocation) {
+      statusEl.textContent = '📍 Requesting location...';
+      statusEl.style.color = '#aaf';
+
       navigator.geolocation.watchPosition(
         (position) => {
           const userLat = position.coords.latitude;
@@ -75,22 +136,29 @@
           const distance = calculateDistance(userLat, userLon, TARGET_LAT, TARGET_LON);
 
           updateInfo(userLat, userLon, distance);
-          console.log(`Distance to target: ${distance.toFixed(1)}m`);
         },
         (error) => {
-          document.getElementById('status').textContent = 'GPS Error: ' + error.message;
-          document.getElementById('status').style.color = '#ff0000';
+          let errorMsg = 'GPS Error';
+          if (error.code === error.PERMISSION_DENIED) {
+            errorMsg = 'Location permission denied. Enable in settings.';
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            errorMsg = 'Location unavailable. Try outdoors.';
+          } else if (error.code === error.TIMEOUT) {
+            errorMsg = 'Location request timed out.';
+          }
+          statusEl.textContent = '❌ ' + errorMsg;
+          statusEl.style.color = '#ff4444';
           console.error('Geolocation error:', error);
         },
         {
           enableHighAccuracy: true,
           maximumAge: 0,
-          timeout: 5000
+          timeout: UPDATE_INTERVAL
         }
       );
     } else {
-      document.getElementById('status').textContent = 'Geolocation not supported';
-      document.getElementById('status').style.color = '#ff0000';
+      statusEl.textContent = '❌ Geolocation not supported on this device';
+      statusEl.style.color = '#ff4444';
     }
   </script>
 </body>
