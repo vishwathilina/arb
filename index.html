@@ -10,7 +10,8 @@
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   
   <style>
-    body { margin: 0; overflow: hidden; }
+    * { margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; overflow: hidden; }
     a-scene { width: 100%; height: 100vh; }
     
     #info {
@@ -25,11 +26,18 @@
       font-family: Arial;
       z-index: 10;
       max-width: 200px;
+      line-height: 1.5;
     }
     
     #info p { margin: 4px 0; }
     #info span { color: #0f0; font-weight: bold; }
-    #status { margin-top: 8px; padding-top: 8px; border-top: 1px solid #666; font-size: 11px; }
+    #status { 
+      margin-top: 8px; 
+      padding-top: 8px; 
+      border-top: 1px solid #666; 
+      font-size: 11px;
+      color: #fa0;
+    }
   </style>
 </head>
 <body>
@@ -42,19 +50,26 @@
   </div>
 
   <!-- A-Frame AR Scene -->
-  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false;" camera="zoom: 0.8;">
+  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false;">
     
-    <!-- GPS-Anchored Model (hidden by default, shows only when close) -->
+    <!-- GPS-Anchored Model Container -->
     <a-entity id="modelContainer" gps-entity-place="latitude: 6.8206; longitude: 80.0390;" visible="false">
-      <a-model src="assets/logo2.glb" scale="1 1 1" animation="property: rotation; to: 0 360 0; loop: true; dur: 8000;"></a-model>
+      <!-- Using gltf-model for better GLB support -->
+      <a-entity gltf-model="url(assets/logo2.glb)" 
+                scale="1 1 1" 
+                position="0 0 0"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 8000;"></a-entity>
     </a-entity>
 
-    <!-- Fallback Hiro Marker (for indoor testing) -->
+    <!-- Fallback Hiro Marker (for indoor testing without GPS) -->
     <a-marker preset="hiro">
-      <a-model src="assets/logo2.glb" scale="0.5 0.5 0.5" animation="property: rotation; to: 0 360 0; loop: true; dur: 8000;"></a-model>
+      <a-entity gltf-model="url(assets/logo2.glb)" 
+               scale="0.5 0.5 0.5" 
+               position="0 0 0"
+               animation="property: rotation; to: 0 360 0; loop: true; dur: 8000;"></a-entity>
     </a-marker>
 
-    <!-- Camera -->
+    <!-- Camera with controls removed for AR -->
     <a-entity camera></a-entity>
     
   </a-scene>
@@ -71,17 +86,21 @@
     const statusEl = document.getElementById('status');
     const modelContainer = document.getElementById('modelContainer');
 
-    // Calculate distance between two GPS points (Haversine)
+    console.log('AR Script loaded');
+
+    // Calculate distance between two GPS points (Haversine formula)
     function calculateDistance(lat1, lon1, lat2, lon2) {
-      const R = 6371e3;
+      const R = 6371e3; // Earth radius in meters
       const φ1 = (lat1 * Math.PI) / 180;
       const φ2 = (lat2 * Math.PI) / 180;
       const Δφ = ((lat2 - lat1) * Math.PI) / 180;
       const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
       const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
                 Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
+
+      return R * c; // Distance in meters
     }
 
     // Update UI display and show/hide model
@@ -94,39 +113,57 @@
 
       // Show/hide 3D model based on distance
       if (modelContainer) {
-        modelContainer.setAttribute('visible', inRange ? 'true' : 'false');
+        modelContainer.setAttribute('visible', inRange);
       }
 
       if (inRange) {
-        statusEl.innerHTML = '✓ <b>Object visible!</b><br>3D model appearing';
+        statusEl.innerHTML = '✅ <b>VISIBLE!</b><br>3D appears now';
         statusEl.style.color = '#0f0';
       } else {
-        statusEl.innerHTML = `📍 Get closer<br><b>${(distance - TRIGGER_RADIUS).toFixed(0)}m away</b>`;
+        const remaining = (distance - TRIGGER_RADIUS).toFixed(0);
+        statusEl.innerHTML = `📍 Closer needed<br><b>${remaining}m away</b>`;
         statusEl.style.color = '#fa0';
       }
 
-      console.log(`Distance: ${distance.toFixed(1)}m | In range: ${inRange} | Model visible: ${inRange}`);
+      console.log(`Distance: ${distance.toFixed(1)}m | In range: ${inRange}`);
     }
 
     // Start GPS tracking
     if (navigator.geolocation) {
-      statusEl.innerHTML = '📍 Getting location...';
+      statusEl.innerHTML = '📍 Getting GPS...';
       statusEl.style.color = '#aaf';
+      console.log('Starting GPS watch...');
 
       navigator.geolocation.watchPosition(
         (pos) => {
-          const dist = calculateDistance(pos.coords.latitude, pos.coords.longitude, TARGET_LAT, TARGET_LON);
-          updateDisplay(pos.coords.latitude, pos.coords.longitude, dist);
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const acc = pos.coords.accuracy;
+          const dist = calculateDistance(lat, lon, TARGET_LAT, TARGET_LON);
+          
+          updateDisplay(lat, lon, dist);
+          console.log(`GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)} | Accuracy: ${acc.toFixed(0)}m | Distance: ${dist.toFixed(1)}m`);
         },
         (err) => {
-          statusEl.innerHTML = '❌ GPS Error<br>' + err.message;
+          let msg = 'GPS Error';
+          if (err.code === 1) msg = 'Permission denied - allow location';
+          else if (err.code === 2) msg = 'Position unavailable - try outdoors';
+          else if (err.code === 3) msg = 'Location timeout';
+          
+          statusEl.innerHTML = `❌ ${msg}`;
           statusEl.style.color = '#f44';
+          console.error('Geolocation error:', err);
         },
-        { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+        { 
+          enableHighAccuracy: true, 
+          maximumAge: 0, 
+          timeout: 5000 
+        }
       );
     } else {
-      statusEl.innerHTML = '❌ No GPS';
+      statusEl.innerHTML = '❌ GPS not supported';
       statusEl.style.color = '#f44';
+      console.error('Geolocation not available');
     }
   </script>
 </body>
