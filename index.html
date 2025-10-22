@@ -44,8 +44,8 @@
   <!-- A-Frame AR Scene -->
   <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false;">
     
-    <!-- GPS-Anchored Model (appears at target location) -->
-    <a-entity id="modelContainer" gps-entity-place="latitude: 6.8206; longitude: 80.0390;">
+    <!-- GPS-Anchored Model (hidden by default, shows only when close) -->
+    <a-entity id="modelContainer" gps-entity-place="latitude: 6.8206; longitude: 80.0390;" visible="false">
       <a-model src="assets/logo2.glb" scale="1 1 1" animation="property: rotation; to: 0 360 0; loop: true; dur: 8000;"></a-model>
     </a-entity>
 
@@ -69,6 +69,7 @@
     const lonEl = document.getElementById('lon');
     const distEl = document.getElementById('distance');
     const statusEl = document.getElementById('status');
+    const modelContainer = document.getElementById('modelContainer');
 
     // Calculate distance between two GPS points (Haversine)
     function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -83,19 +84,28 @@
       return R * c;
     }
 
-    // Update UI display
+    // Update UI display and show/hide model
     function updateDisplay(lat, lon, distance) {
       latEl.textContent = lat.toFixed(4);
       lonEl.textContent = lon.toFixed(4);
       distEl.textContent = distance.toFixed(1);
 
-      if (distance <= TRIGGER_RADIUS) {
-        statusEl.innerHTML = '✓ <b>In range!</b><br>Model visible';
+      const inRange = distance <= TRIGGER_RADIUS;
+
+      // Show/hide 3D model based on distance
+      if (modelContainer) {
+        modelContainer.setAttribute('visible', inRange ? 'true' : 'false');
+      }
+
+      if (inRange) {
+        statusEl.innerHTML = '✓ <b>Object visible!</b><br>3D model appearing';
         statusEl.style.color = '#0f0';
       } else {
-        statusEl.innerHTML = `⚠ ${(distance - TRIGGER_RADIUS).toFixed(0)}m away`;
+        statusEl.innerHTML = `📍 Get closer<br><b>${(distance - TRIGGER_RADIUS).toFixed(0)}m away</b>`;
         statusEl.style.color = '#fa0';
       }
+
+      console.log(`Distance: ${distance.toFixed(1)}m | In range: ${inRange} | Model visible: ${inRange}`);
     }
 
     // Start GPS tracking
