@@ -1,98 +1,55 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NSBM Anniversary AR</title>
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-  
-  <style>
-    body { margin: 0; overflow: hidden; }
-    #info {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      padding: 12px;
-      border-radius: 8px;
-      font-size: 12px;
-      z-index: 1000;
-      max-width: 220px;
-    }
-    #info p { margin: 4px 0; }
-  </style>
-</head>
-<body>
-  
-  <div id="info">
-    <p>📍 <strong>NSBM AR Viewer</strong></p>
-    <p>Camera: Active</p>
-    <p>Model: Loading...</p>
-  </div>
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
+        <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
+        <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+        <script src="https://raw.githack.com/donmccurdy/aframe-extras/master/dist/aframe-extras.loaders.min.js"></script>
+        <!-- GPS components for location-based AR -->
+        <script src="https://unpkg.com/aframe-gps-camera/dist/aframe-gps-camera.min.js"></script>
+        <script src="https://unpkg.com/aframe-gps-entity-place/dist/aframe-gps-entity-place.min.js"></script>
+    </head>
 
-  <a-scene 
-    embedded 
-    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
-    vr-mode-ui="enabled: false"
-    renderer="logarithmicDepthBuffer: true;">
-    
-    <!-- GPS Location-based model (NSBM Campus) -->
-    <a-entity gps-entity-place="latitude: 6.829987; longitude: 79.996113;">
-      <a-entity  
-        gltf-model="url(public/model.glb)" 
-        position="0 0 0" 
-        scale="2 2 2"
-        rotation="0 0 0"
-        animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear">
-      </a-entity>
-    </a-entity>
-    
-    <!-- Fallback Hiro Marker (for indoor testing) -->
-    <a-marker preset="hiro">
-      <a-entity 
-        gltf-model="url(public/model.glb)" 
-        position="0 0 0" 
-        scale="1 1 1"
-        rotation="0 0 0"
-        animation="property: rotation; to: 0 360 0; loop: true; dur: 8000; easing: linear">
-      </a-entity>
-    </a-marker>
-    
-    <!-- Camera with wider FOV (zoomed out) -->
-    <a-entity 
-      camera 
-      gps-camera="minDistance: 5; maxDistance: 100;"
-      fov="80"
-      zoom="0.8">
-    </a-entity>
-    
-  </a-scene>
+    <body style="margin: 0; overflow: hidden;">
+        <a-scene
+            renderer="logarithmicDepthBuffer: true;"
+            embedded
+            loading-screen="enabled: false;"
+            arjs="sourceType: webcam; debugUIEnabled: false;"
+        >
+            <!-- Prompt for location permission early so GPS components can initialize on mobile -->
+            <script>
+                (function requestLocation(){
+                    if (!navigator || !navigator.geolocation) {
+                        console.warn('Geolocation not available');
+                        return;
+                    }
+                    // Call once to trigger permission prompt on some mobile browsers
+                    navigator.geolocation.getCurrentPosition(function(pos){
+                        console.log('Initial position obtained', pos.coords);
+                    }, function(err){
+                        console.warn('Geolocation error', err);
+                    }, {enableHighAccuracy: true, maximumAge: 0, timeout: 10000});
+                })();
+            </script>
+            <a-assets>
+                <a-asset-item
+                    id="animated-asset"
+                    src="assets/asset.glb"
+                ></a-asset-item>
+            </a-assets>
 
-  <script>
-    console.log('AR scene loading...');
-    
-    // Update info when scene loads
-    const scene = document.querySelector('a-scene');
-    scene.addEventListener('loaded', () => {
-      console.log('Scene loaded');
-      document.querySelector('#info p:nth-child(3)').textContent = 'Model: Ready ✓';
-    });
-    
-    // Check if model loads
-    const model = document.querySelector('[gltf-model]');
-    if (model) {
-      model.addEventListener('model-loaded', () => {
-        console.log('3D model loaded successfully');
-        document.querySelector('#info p:nth-child(3)').textContent = 'Model: Loaded ✓';
-      });
-      
-      model.addEventListener('model-error', (err) => {
-        console.error('Model load error:', err);
-        document.querySelector('#info p:nth-child(3)').textContent = 'Model: Error ✗';
-      });
-    }
-  </script>
-</body>
+                <a-entity
+                    look-at="[gps-camera]"
+                    animation-mixer="loop: repeat"
+                    gltf-model="#animated-asset"
+                    scale="0.16712650173817395 0.16712650173817395 0.16712650173817395"
+                    gps-entity-place="latitude: 6.829993; longitude: 79.996128;"
+                ></a-entity>
+
+            <a-camera gps-camera rotation-reader></a-camera>
+        </a-scene>
+    </body>
 </html>
