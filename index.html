@@ -1,170 +1,273 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WebAR GPS Model Viewer</title>
-  <!-- A-Frame for AR -->
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-  <!-- AR.js for geolocation -->
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-  
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <title>Location AR — Statue (Fixed World Rotation)</title>
+
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <!-- AR.js (location based build) -->
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.min.js"></script>
+
   <style>
-    * { margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; overflow: hidden; }
-    a-scene { width: 100%; height: 100vh; }
-    
-    #info {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      background: rgba(0, 0, 0, 0.85);
-      color: #fff;
-      padding: 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-family: Arial;
-      z-index: 10;
-      max-width: 200px;
-      line-height: 1.5;
-    }
-    
-    #info p { margin: 4px 0; }
-    #info span { color: #0f0; font-weight: bold; }
-    #status { 
-      margin-top: 8px; 
-      padding-top: 8px; 
-      border-top: 1px solid #666; 
-      font-size: 11px;
-      color: #fa0;
-    }
+    :root{--ui-bg:rgba(255,255,255,0.92);--accent:#0b84ff;--muted:#666}
+    html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, Roboto, 'Segoe UI', Arial}
+    a{color:var(--accent)}
+
+    /* Scene fills screen */
+    a-scene { width:100%; height:100vh; display:block; position: absolute; top: 0; left: 0; }
+    canvas { display:block; width:100% !important; height:100% !important; }
+    video { display:block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+
+    /* Top controls panel */
+    .panel { position:fixed; left:12px; top:12px; z-index:9999; background:var(--ui-bg); padding:10px 12px; border-radius:12px; box-shadow:0 6px 24px rgba(0,0,0,0.15); width:320px; max-width:calc(100% - 32px); transition: opacity 0.3s ease, transform 0.3s ease; }
+    .panel.hidden { opacity: 0; transform: translateY(-20px); pointer-events: none; }
+    .panel h1{font-size:15px;margin:0 0 6px 0}
+    .row{display:flex;gap:8px;align-items:center}
+    label{font-size:12px;color:var(--muted);display:block;margin:6px 0}
+    input[type=range]{width:100%}
+    .muted{color:var(--muted);font-size:12px}
+    .small{font-size:12px}
+    .controls{margin-top:8px}
+
+    /* Toggle button */
+    .toggle-btn { position: fixed; top: 12px; right: 12px; z-index: 10000; background: var(--accent); color: white; border: none; padding: 10px 16px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 6px 24px rgba(0,0,0,0.15); transition: background 0.2s ease; }
+    .toggle-btn:hover { background: #0066cc; }
+    .toggle-btn:active { transform: scale(0.95); }
+
+    /* Bottom status bar */
+    .statusbar{position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:var(--ui-bg);padding:10px 12px;border-radius:12px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 6px 24px rgba(0,0,0,0.12)}
+
+    /* Simple compass circle */
+    .compass { width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid rgba(0,0,0,0.08);position:relative }
+    .compass .needle{position:absolute;width:2px;height:18px;top:8px;background:var(--accent);transform-origin:center bottom}
+
+    /* Floating help */
+    .help{position:fixed;right:12px;top:12px;background:var(--ui-bg);padding:8px;border-radius:10px;z-index:9999;box-shadow:0 6px 24px rgba(0,0,0,0.12);max-width:260px}
+
+    /* Mobile tweaks */
+    @media (max-width:520px){ .panel{width:calc(100% - 24px);left:12px;top:12px} }
   </style>
 </head>
 <body>
-  <!-- Info Panel -->
-  <div id="info">
-    <p>📍 Lat: <span id="lat">--</span></p>
-    <p>📍 Lon: <span id="lon">--</span></p>
-    <p>📏 Dist: <span id="distance">--</span>m</p>
-    <div id="status">Initializing...</div>
+
+  <!-- Toggle Button -->
+  <button class="toggle-btn" id="toggleBtn">Hide Panel</button>
+
+  <!-- UI Panel -->
+  <div class="panel" id="panel">
+    <h1>Statue AR — Fixed Placement</h1>
+    <div class="muted">Model appears at a fixed GPS coordinate. Walk around it to see different views.</div>
+
+    <div class="controls">
+      <label>Scale: <span id="scaleVal">1.00</span></label>
+      <input id="scaleSlider" type="range" min="0.1" max="5" step="0.01" value="1">
+
+      <label>Height (meters): <span id="heightVal">0.00</span></label>
+      <input id="heightSlider" type="range" min="-5" max="10" step="0.01" value="0">
+
+      <label>Rotation Y (degrees): <span id="rotVal">0</span></label>
+      <input id="rotSlider" type="range" min="0" max="360" step="1" value="0">
+
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button id="presetBtn">Presets</button>
+        <button id="centerBtn">Center Map</button>
+      </div>
+    </div>
+
+    <hr style="margin:10px 0;border:none;border-top:1px solid rgba(0,0,0,0.06)">
+    <div class="small">Status: <span id="status">waiting for permissions</span></div>
+    <div class="small" style="margin-top:6px">Distance: <strong id="distance">—</strong> • Accuracy: <span id="accuracy">—</span>m</div>
   </div>
 
-  <!-- A-Frame AR Scene -->
-  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false;">
-    
-    <!-- GPS-Anchored Model Container -->
-    <a-entity id="modelContainer" gps-entity-place="latitude: 6.8206; longitude: 80.0390;" visible="false">
-      <!-- Using gltf-model for better GLB support -->
-      <a-entity gltf-model="url(assets/logo2.glb)" 
-                scale="1 1 1" 
-                position="0 0 0"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 8000;"></a-entity>
+  <div class="help">
+    <div class="small">Replace <code>TARGET_LAT</code>, <code>TARGET_LON</code>, and <code>MODEL_URL</code> inside the HTML before deploying. This page uses A-Frame + AR.js gps-entity-place. Host over HTTPS.</div>
+  </div>
+
+  <!-- A-Frame scene -->
+  <a-scene vr-mode-ui="enabled: false" renderer="logarithmicDepthBuffer: true; alpha: true;" embedded arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false; displayWidth: 1920; displayHeight: 1080;">
+
+    <!-- Replace TARGET_LAT and TARGET_LON below with your desired coordinates -->
+    <a-entity id="statue"
+              gps-entity-place="latitude: 6.829494; longitude: 79.996261;"
+              rotation="0 0 0"
+              scale="1 1 1"> 
+
+      <!-- Replace MODEL_URL with your hosted .glb/.gltf file URL -->
+      <a-entity id="gltfModel" gltf-model="/public/model.glb" rotation="0 0 0" position="0 0 0" animation-mixer></a-entity>
     </a-entity>
+ 
+    <!-- Camera for AR.js gps -->
+    <a-entity camera gps-camera rotation-reader></a-entity>
 
-    <!-- Fallback Hiro Marker (for indoor testing without GPS) -->
-    <a-marker preset="hiro">
-      <a-entity gltf-model="url(assets/logo2.glb)" 
-               scale="0.5 0.5 0.5" 
-               position="0 0 0"
-               animation="property: rotation; to: 0 360 0; loop: true; dur: 8000;"></a-entity>
-    </a-marker>
-
-    <!-- Camera with controls removed for AR -->
-    <a-entity camera></a-entity>
-    
   </a-scene>
 
+  <!-- Bottom status bar with compass -->
+  <div class="statusbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="compass" id="compass">
+        <div class="needle" id="needle" style="transform:rotate(0deg)"></div>
+      </div>
+      <div>
+        <div class="small">Bearing to target: <strong id="bearing">—</strong>°</div>
+        <div class="small">Your heading: <strong id="heading">—</strong>°</div>
+      </div>
+    </div>
+    <div class="small muted">Tap the panel to adjust scale, height, rotation.</div>
+  </div>
+
   <script>
-    // Configuration
-    const TARGET_LAT = 6.8206;
-    const TARGET_LON = 80.0390;
-    const TRIGGER_RADIUS = 50; // meters
+    // ========== TOGGLE PANEL ==========
+    const toggleBtn = document.getElementById('toggleBtn');
+    const panel = document.getElementById('panel');
+    let panelVisible = true;
 
-    const latEl = document.getElementById('lat');
-    const lonEl = document.getElementById('lon');
-    const distEl = document.getElementById('distance');
-    const statusEl = document.getElementById('status');
-    const modelContainer = document.getElementById('modelContainer');
-
-    console.log('AR Script loaded');
-
-    // Calculate distance between two GPS points (Haversine formula)
-    function calculateDistance(lat1, lon1, lat2, lon2) {
-      const R = 6371e3; // Earth radius in meters
-      const φ1 = (lat1 * Math.PI) / 180;
-      const φ2 = (lat2 * Math.PI) / 180;
-      const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-      const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-
-      const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-      return R * c; // Distance in meters
-    }
-
-    // Update UI display and show/hide model
-    function updateDisplay(lat, lon, distance) {
-      latEl.textContent = lat.toFixed(4);
-      lonEl.textContent = lon.toFixed(4);
-      distEl.textContent = distance.toFixed(1);
-
-      const inRange = distance <= TRIGGER_RADIUS;
-
-      // Show/hide 3D model based on distance
-      if (modelContainer) {
-        modelContainer.setAttribute('visible', inRange);
-      }
-
-      if (inRange) {
-        statusEl.innerHTML = '✅ <b>VISIBLE!</b><br>3D appears now';
-        statusEl.style.color = '#0f0';
+    toggleBtn.addEventListener('click', () => {
+      panelVisible = !panelVisible;
+      if (panelVisible) {
+        panel.classList.remove('hidden');
+        toggleBtn.textContent = 'Hide Panel';
       } else {
-        const remaining = (distance - TRIGGER_RADIUS).toFixed(0);
-        statusEl.innerHTML = `📍 Closer needed<br><b>${remaining}m away</b>`;
-        statusEl.style.color = '#fa0';
+        panel.classList.add('hidden');
+        toggleBtn.textContent = 'Show Panel';
       }
+    });
 
-      console.log(`Distance: ${distance.toFixed(1)}m | In range: ${inRange}`);
+    // ---------------------
+    // IMPORTANT: BEFORE DEPLOYING
+    // Replace: TARGET_LAT, TARGET_LON, MODEL_URL in the HTML above with your real values.
+    // Example replacements:
+    //   TARGET_LAT => 6.927079
+    //   TARGET_LON => 79.861244
+    //   MODEL_URL  => https://cdn.example.com/models/statue.glb
+    // ---------------------
+
+    // Helpers: Haversine distance & bearing
+    function toRad(v){return v * Math.PI/180}
+    function toDeg(v){return v * 180/Math.PI}
+
+    function haversine(lat1, lon1, lat2, lon2){
+      const R = 6371000; // meters
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
+      const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
     }
 
-    // Start GPS tracking
-    if (navigator.geolocation) {
-      statusEl.innerHTML = '📍 Getting GPS...';
-      statusEl.style.color = '#aaf';
-      console.log('Starting GPS watch...');
+    function bearingTo(lat1, lon1, lat2, lon2){
+      const y = Math.sin(toRad(lon2-lon1)) * Math.cos(toRad(lat2));
+      const x = Math.cos(toRad(lat1))*Math.sin(toRad(lat2)) - Math.sin(toRad(lat1))*Math.cos(toRad(lat2))*Math.cos(toRad(lon2-lon1));
+      return (toDeg(Math.atan2(y,x)) + 360) % 360;
+    }
 
-      navigator.geolocation.watchPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-          const acc = pos.coords.accuracy;
-          const dist = calculateDistance(lat, lon, TARGET_LAT, TARGET_LON);
-          
-          updateDisplay(lat, lon, dist);
-          console.log(`GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)} | Accuracy: ${acc.toFixed(0)}m | Distance: ${dist.toFixed(1)}m`);
-        },
-        (err) => {
-          let msg = 'GPS Error';
-          if (err.code === 1) msg = 'Permission denied - allow location';
-          else if (err.code === 2) msg = 'Position unavailable - try outdoors';
-          else if (err.code === 3) msg = 'Location timeout';
-          
-          statusEl.innerHTML = `❌ ${msg}`;
-          statusEl.style.color = '#f44';
-          console.error('Geolocation error:', err);
-        },
-        { 
-          enableHighAccuracy: true, 
-          maximumAge: 0, 
-          timeout: 5000 
+    // UI elements
+    const scaleSlider = document.getElementById('scaleSlider');
+    const heightSlider = document.getElementById('heightSlider');
+    const rotSlider = document.getElementById('rotSlider');
+    const scaleVal = document.getElementById('scaleVal');
+    const heightVal = document.getElementById('heightVal');
+    const rotVal = document.getElementById('rotVal');
+    const status = document.getElementById('status');
+    const distanceEl = document.getElementById('distance');
+    const accuracyEl = document.getElementById('accuracy');
+    const bearingEl = document.getElementById('bearing');
+    const headingEl = document.getElementById('heading');
+    const needle = document.getElementById('needle');
+
+    const statue = document.getElementById('statue');
+    const innerModel = document.getElementById('gltfModel');
+
+    // Default placeholders (these will be replaced by you)
+    const TARGET_LAT = parseFloat('TARGET_LAT'); // replace
+    const TARGET_LON = parseFloat('TARGET_LON'); // replace
+
+    // Update functions
+    function applyScale(s){ statue.setAttribute('scale', `${s} ${s} ${s}`); scaleVal.textContent = s.toFixed(2); }
+    function applyHeight(m){ innerModel.setAttribute('position', `0 ${m} 0`); heightVal.textContent = m.toFixed(2); }
+    function applyRotation(y){ statue.setAttribute('rotation', `0 ${y} 0`); rotVal.textContent = y; }
+
+    scaleSlider.addEventListener('input', e => applyScale(parseFloat(e.target.value)));
+    heightSlider.addEventListener('input', e => applyHeight(parseFloat(e.target.value)));
+    rotSlider.addEventListener('input', e => applyRotation(parseInt(e.target.value)));
+
+    // Preset button example
+    document.getElementById('presetBtn').addEventListener('click', () => {
+      applyScale(1.25); applyHeight(0); applyRotation(180);
+    });
+
+    // Center button tries to re-request geoposition (no map here) — simple nudge
+    document.getElementById('centerBtn').addEventListener('click', () => {
+      if(navigator.geolocation){ navigator.geolocation.getCurrentPosition(()=>{}, ()=>{}, {enableHighAccuracy:true, maximumAge:0}); }
+    });
+
+    // Listen for gps-camera updates from AR.js
+    window.addEventListener('gps-camera-update-position', (ev) => {
+      const pos = ev.detail.position; // {latitude, longitude}
+      const acc = ev.detail.position.coords ? ev.detail.position.coords.accuracy : (ev.detail.accuracy || 0);
+      const lat = pos.latitude || pos.lat || 0;
+      const lon = pos.longitude || pos.lng || pos.lon || 0;
+
+      const dist = isFinite(TARGET_LAT) ? haversine(lat, lon, TARGET_LAT, TARGET_LON) : NaN;
+      const bearing = isFinite(TARGET_LAT) ? Math.round(bearingTo(lat, lon, TARGET_LAT, TARGET_LON)) : '—';
+
+      distanceEl.textContent = isFinite(dist) ? (dist < 1000 ? `${Math.round(dist)} m` : `${(dist/1000).toFixed(2)} km`) : '—';
+      accuracyEl.textContent = (acc ? Math.round(acc) : '—');
+      bearingEl.textContent = bearing;
+
+      status.textContent = `lat ${lat.toFixed(6)}, lon ${lon.toFixed(6)}`;
+    });
+
+    window.addEventListener('gps-camera-error', (e) => {
+      status.textContent = 'GPS error: ' + (e.detail || 'unknown');
+    });
+
+    // Device orientation for heading and compass needle
+    let deviceHeading = 0;
+    function handleOrientation(e){
+      // Many devices provide alpha as compass heading in degrees
+      const alpha = e.alpha; // 0..360
+      if(alpha == null) return;
+      // On some devices the alpha is relative; using 'webkitCompassHeading' if available
+      const heading = e.webkitCompassHeading || alpha;
+      deviceHeading = Math.round(heading);
+      headingEl.textContent = deviceHeading;
+
+      // If we have bearing to target, rotate needle accordingly (needle points to target relative to device heading)
+      const b = parseFloat(bearingEl.textContent);
+      if(!isNaN(b)){
+        const relative = (b - deviceHeading + 360) % 360;
+        needle.style.transform = `rotate(${relative}deg)`;
+      }
+    }
+
+    if(window.DeviceOrientationEvent){
+      // iOS 13+ requires permission — we attempt to request when user interacts
+      function enableOrientation() {
+        if(typeof DeviceOrientationEvent.requestPermission === 'function'){
+          DeviceOrientationEvent.requestPermission().then(permissionState => {
+            if(permissionState === 'granted') window.addEventListener('deviceorientation', handleOrientation, true);
+          }).catch(()=>{});
+        } else {
+          window.addEventListener('deviceorientation', handleOrientation, true);
         }
-      );
-    } else {
-      statusEl.innerHTML = '❌ GPS not supported';
-      statusEl.style.color = '#f44';
-      console.error('Geolocation not available');
+      }
+      // request on first touch to avoid permission popup blocking
+      document.getElementById('panel').addEventListener('click', enableOrientation, { once:true });
+    }
+
+    // Model loading feedback
+    innerModel.addEventListener('model-loaded', () => { document.getElementById('status').textContent = 'model loaded'; });
+
+    // Initial application of defaults
+    applyScale(parseFloat(scaleSlider.value)); applyHeight(parseFloat(heightSlider.value)); applyRotation(parseInt(rotSlider.value));
+
+    // Simple guard: if TARGET_LAT is still the string placeholder, warn the deployer
+    if(isNaN(TARGET_LAT) || isNaN(TARGET_LON)){
+      status.textContent = '⚠️ Replace TARGET_LAT / TARGET_LON in HTML before deploy';
     }
   </script>
+
 </body>
 </html>
