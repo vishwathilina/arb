@@ -6,22 +6,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>AR Location Viewer</title>
         <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
-        <script src="https            let panelVisible = true;
-            
-            // Check if mobile
-            const isMobile = window.innerWidth <= 768;
-            
-            // Toggle panel visibility
-            toggleBtn.addEventListener('click', () => {
-                panelVisible = !panelVisible;
-                if (panelVisible) {
-                    controlPanel.classList.remove('hidden');
-                    toggleBtn.classList.add('panel-visible');
-                } else {
-                    controlPanel.classList.add('hidden');
-                    toggleBtn.classList.remove('panel-visible');
-                }
-            });aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
+        <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
         <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
         <script src="https://raw.githack.com/donmccurdy/aframe-extras/master/dist/aframe-extras.loaders.min.js"></script>
         
@@ -43,13 +28,11 @@
                 box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
                 z-index: 10000;
                 max-width: 320px;
-                width: calc(100vw - 30px);
-                max-width: 320px;
                 transition: transform 0.3s ease, opacity 0.3s ease;
             }
             
             #controlPanel.hidden {
-                transform: translateX(calc(100vw + 20px));
+                transform: translateX(350px);
                 opacity: 0;
                 pointer-events: none;
             }
@@ -86,30 +69,6 @@
             .control-group input[type="range"] {
                 width: 100%;
                 margin-top: 5px;
-                height: 6px;
-                appearance: none;
-                -webkit-appearance: none;
-                background: #ddd;
-                border-radius: 3px;
-                outline: none;
-            }
-            
-            .control-group input[type="range"]::-webkit-slider-thumb {
-                -webkit-appearance: none;
-                width: 20px;
-                height: 20px;
-                background: #0084ff;
-                border-radius: 50%;
-                cursor: pointer;
-            }
-            
-            .control-group input[type="range"]::-moz-range-thumb {
-                width: 20px;
-                height: 20px;
-                background: #0084ff;
-                border-radius: 50%;
-                cursor: pointer;
-                border: none;
             }
             
             .value-display {
@@ -134,7 +93,6 @@
                 font-weight: 600;
                 cursor: pointer;
                 transition: all 0.2s;
-                min-height: 44px; /* iOS touch target minimum */
             }
             
             .btn-primary {
@@ -172,11 +130,6 @@
                 box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
                 z-index: 10001;
                 transition: transform 0.2s, background 0.2s;
-                width: 48px;
-                height: 48px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
             }
             
             #toggleBtn:active {
@@ -184,7 +137,7 @@
             }
             
             #toggleBtn.panel-visible {
-                right: calc(100vw - 30px);
+                right: 350px;
             }
             
             /* Info Display */
@@ -198,86 +151,11 @@
                 border-radius: 10px;
                 font-size: 12px;
                 z-index: 9999;
-                max-width: calc(100vw - 30px);
-                width: auto;
+                max-width: 250px;
             }
             
             #info p {
                 margin: 4px 0;
-            }
-            
-            /* Mobile Responsiveness */
-            @media (max-width: 768px) {
-                #controlPanel {
-                    top: auto;
-                    bottom: 15px;
-                    right: 15px;
-                    left: 15px;
-                    width: calc(100vw - 30px);
-                    max-width: none;
-                    transform: translateY(calc(100% + 20px));
-                }
-                
-                #controlPanel.hidden {
-                    transform: translateY(calc(100% + 20px));
-                }
-                
-                #toggleBtn {
-                    top: auto;
-                    bottom: 80px;
-                    right: 15px;
-                }
-                
-                #toggleBtn.panel-visible {
-                    bottom: calc(100vh - 30px);
-                }
-                
-                #controlPanel h2 {
-                    font-size: 18px;
-                }
-                
-                .control-group label {
-                    font-size: 14px;
-                }
-                
-                .control-group input[type="number"],
-                .control-group input[type="text"] {
-                    padding: 12px 10px;
-                    font-size: 16px; /* Prevents zoom on iOS */
-                }
-                
-                button {
-                    padding: 14px 10px;
-                    font-size: 16px;
-                    min-height: 48px;
-                }
-                
-                #info {
-                    bottom: 15px;
-                    left: 15px;
-                    right: 15px;
-                    max-width: none;
-                    font-size: 13px;
-                }
-            }
-            
-            @media (max-width: 480px) {
-                #controlPanel {
-                    padding: 20px;
-                }
-                
-                .control-group {
-                    margin-bottom: 20px;
-                }
-                
-                .button-group {
-                    flex-direction: column;
-                    gap: 12px;
-                }
-                
-                button {
-                    width: 100%;
-                }
             }
         </style>
     </head>
