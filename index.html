@@ -14,7 +14,7 @@
   <body style="margin: 0; overflow: hidden;">
     <a-scene
       vr-mode-ui="enabled: false"
-      arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
+      arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false; gpsMinDistance: 5;"
       renderer="logarithmicDepthBuffer: true;"
     >
       <a-assets>
@@ -29,75 +29,64 @@
         gltf-model="#model"
         look-at="[gps-camera]"
         scale="2 2 2"
-        position="0 0 0"
         gps-entity-place="latitude: 6.820065; longitude: 80.040148;"
+        position="0 0 0"
       ></a-entity>
 
       <a-camera gps-camera rotation-reader></a-camera>
     </a-scene>
 
     <script>
-      // GPS stabilization and location monitoring
-      const arModel = document.getElementById('arModel');
-      const scene = document.querySelector('a-scene');
-
-      // Fixed target location
-      const targetLat = 6.820065;
-      const targetLon = 80.040148;
-
-      // GPS monitoring for better stability
-      if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(
-          (position) => {
-            const userLat = position.coords.latitude;
-            const userLon = position.coords.longitude;
-            const accuracy = position.coords.accuracy;
-
-            // Calculate distance to target
-            const R = 6371e3; // Earth's radius in meters
-            const φ1 = (userLat * Math.PI) / 180;
-            const φ2 = (targetLat * Math.PI) / 180;
-            const Δφ = ((targetLat - userLat) * Math.PI) / 180;
-            const Δλ = ((targetLon - userLon) * Math.PI) / 180;
-
-            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            const distance = R * c;
-
-            console.log(`GPS Fixed Location: ${targetLat}, ${targetLon}`);
-            console.log(`User Location: ${userLat.toFixed(6)}, ${userLon.toFixed(6)}`);
-            console.log(`Distance to target: ${distance.toFixed(1)}m`);
-            console.log(`GPS Accuracy: ${accuracy.toFixed(1)}m`);
-
-            // Ensure model stays at fixed GPS position
-            if (arModel) {
-              arModel.setAttribute('gps-entity-place', `latitude: ${targetLat}; longitude: ${targetLon};`);
-            }
-          },
-          (error) => {
-            console.error('GPS Error:', error);
-          },
-          {
-            enableHighAccuracy: true,
-            maximumAge: 10000,
-            timeout: 5000
-          }
-        );
-      }
-
-      // Scene loaded event
-      scene.addEventListener('loaded', () => {
-        console.log('AR Scene loaded - Model fixed at GPS coordinates:', targetLat, targetLon);
-      });
-
-      // Prevent model from moving due to GPS fluctuations
-      setInterval(() => {
-        if (arModel) {
-          // Reaffirm the fixed position every 5 seconds
-          arModel.setAttribute('gps-entity-place', `latitude: ${targetLat}; longitude: ${targetLon};`);
+      // Target GPS coordinates (NSBM Campus)
+      const targetLat = 6.821382;
+      const targetLon = 80.038355;
+      
+      window.addEventListener('load', () => {
+        const scene = document.querySelector('a-scene');
+        const model = document.querySelector('#arModel');
+        
+        // Wait for AR.js to initialize
+        scene.addEventListener('gps-camera-update-position', (event) => {
+          const currentLat = event.detail.position.latitude;
+          const currentLon = event.detail.position.longitude;
+          
+          console.log(`Camera GPS: ${currentLat}, ${currentLon}`);
+          console.log(`Target GPS: ${targetLat}, ${targetLon}`);
+          
+          // Calculate distance to target
+          const distance = calculateDistance(currentLat, currentLon, targetLat, targetLon);
+          console.log(`Distance to target: ${distance.toFixed(2)} meters`);
+        });
+        
+        // Force the model to stay at exact coordinates
+        if (model) {
+          // Continuously reaffirm the GPS position
+          setInterval(() => {
+            model.setAttribute('gps-entity-place', {
+              latitude: targetLat,
+              longitude: targetLon
+            });
+          }, 1000); // Update every second
+          
+          console.log('GPS position stabilization active');
         }
-      }, 5000);
+      });
+      
+      // Haversine formula to calculate distance between two GPS coordinates
+      function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // Earth's radius in meters
+        const φ1 = lat1 * Math.PI / 180;
+        const φ2 = lat2 * Math.PI / 180;
+        const Δφ = (lat2 - lat1) * Math.PI / 180;
+        const Δλ = (lon2 - lon1) * Math.PI / 180;
+        
+        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                  Math.cos(φ1) * Math.cos(φ2) *
+                  Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        
+        return R * c; // Distance in meters
+      }
     </script>
   </body>
 </html>
