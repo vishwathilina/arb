@@ -157,6 +157,95 @@
             #info p {
                 margin: 4px 0;
             }
+            
+            /* Responsive Design */
+            @media (max-width: 768px) {
+                #controlPanel {
+                    position: fixed;
+                    top: auto;
+                    bottom: 15px;
+                    left: 15px;
+                    right: 15px;
+                    max-width: none;
+                    width: calc(100vw - 30px);
+                    max-height: 60vh;
+                    overflow-y: auto;
+                }
+                
+                #controlPanel.hidden {
+                    transform: translateY(100vh);
+                    opacity: 0;
+                    pointer-events: none;
+                }
+                
+                #toggleBtn {
+                    position: fixed;
+                    top: auto;
+                    bottom: 15px;
+                    right: 15px;
+                    left: auto;
+                }
+                
+                #toggleBtn.panel-visible {
+                    right: auto;
+                    left: 15px;
+                }
+                
+                #info {
+                    position: fixed;
+                    bottom: auto;
+                    top: 15px;
+                    left: 15px;
+                    right: 15px;
+                    max-width: none;
+                    width: calc(100vw - 30px);
+                }
+            }
+            
+            @media (max-width: 480px) {
+                #controlPanel {
+                    padding: 12px;
+                    max-height: 50vh;
+                }
+                
+                #controlPanel h2 {
+                    font-size: 14px;
+                    margin-bottom: 10px;
+                }
+                
+                .control-group {
+                    margin-bottom: 12px;
+                }
+                
+                .control-group label {
+                    font-size: 12px;
+                }
+                
+                .control-group input[type="number"],
+                .control-group input[type="text"] {
+                    padding: 6px 8px;
+                    font-size: 13px;
+                }
+                
+                .value-display {
+                    font-size: 12px;
+                }
+                
+                button {
+                    padding: 8px;
+                    font-size: 13px;
+                }
+                
+                #toggleBtn {
+                    padding: 10px 14px;
+                    font-size: 18px;
+                }
+                
+                #info {
+                    padding: 10px 12px;
+                    font-size: 11px;
+                }
+            }
         </style>
     </head>
 
