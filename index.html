@@ -3,19 +3,25 @@
     <head>
         <meta charset="utf-8" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, minimum-scale=0.5, maximum-scale=3.0" />
         <title>AR Location Viewer</title>
         <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
         <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
         <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
         <script src="https://raw.githack.com/donmccurdy/aframe-extras/master/dist/aframe-extras.loaders.min.js"></script>
-        <script src="https://unpkg.com/aframe-camera-controls@1.0.0/dist/aframe-camera-controls.min.js"></script>
         
         <style>
             body {
                 margin: 0;
                 overflow: hidden;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+                touch-action: manipulation;
+                -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                -khtml-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                user-select: none;
             }
             
             /* Control Panel */
@@ -293,7 +299,6 @@
 
         <a-scene
             renderer="logarithmicDepthBuffer: true;"
-            embedded
             loading-screen="enabled: false;"
             arjs="sourceType: webcam; debugUIEnabled: false;"
         >
@@ -314,12 +319,7 @@
                 gps-entity-place="latitude: 6.819446; longitude: 80.040257;"
             ></a-entity>
 
-            <a-camera 
-                gps-camera 
-                rotation-reader
-                camera-controls="enabled: true; zoomEnabled: true; minDistance: 1; maxDistance: 100"
-                zoom-controls="enabled: true"
-            ></a-camera>
+            <a-camera gps-camera rotation-reader></a-camera>
         </a-scene>
 
         <script>
@@ -338,6 +338,20 @@
             const statusText = document.getElementById('statusText');
             
             let panelVisible = true;
+            
+            // Enable zoom and touch handling for mobile
+            document.addEventListener('touchstart', function(e) {
+                // Allow multi-touch for zoom gestures
+                if (e.touches.length > 1) {
+                    e.stopPropagation();
+                }
+            }, { passive: true });
+            
+            // Prevent context menu on long press
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            });
             
             // Default values
             const defaults = {
@@ -452,66 +466,6 @@
                     { enableHighAccuracy: true }
                 );
             }
-            
-            // Mobile Camera Zoom Controls
-            let initialDistance = 0;
-            let initialZoom = 1;
-            const camera = document.querySelector('a-camera');
-            
-            // Touch event handlers for pinch-to-zoom
-            function handleTouchStart(e) {
-                if (e.touches.length === 2) {
-                    const touch1 = e.touches[0];
-                    const touch2 = e.touches[1];
-                    initialDistance = Math.hypot(
-                        touch2.clientX - touch1.clientX,
-                        touch2.clientY - touch1.clientY
-                    );
-                    initialZoom = camera.getAttribute('zoom') || 1;
-                }
-            }
-            
-            function handleTouchMove(e) {
-                if (e.touches.length === 2) {
-                    e.preventDefault();
-                    const touch1 = e.touches[0];
-                    const touch2 = e.touches[1];
-                    const currentDistance = Math.hypot(
-                        touch2.clientX - touch1.clientX,
-                        touch2.clientY - touch1.clientY
-                    );
-                    
-                    if (initialDistance > 0) {
-                        const zoomFactor = currentDistance / initialDistance;
-                        const newZoom = Math.max(0.5, Math.min(3, initialZoom * zoomFactor));
-                        
-                        // Apply zoom to camera
-                        camera.setAttribute('zoom', newZoom);
-                        console.log('Camera zoom:', newZoom);
-                    }
-                }
-            }
-            
-            function handleTouchEnd(e) {
-                initialDistance = 0;
-            }
-            
-            // Add touch event listeners to the scene
-            scene.addEventListener('touchstart', handleTouchStart, { passive: false });
-            scene.addEventListener('touchmove', handleTouchMove, { passive: false });
-            scene.addEventListener('touchend', handleTouchEnd, { passive: false });
-            
-            // Mouse wheel zoom for desktop
-            scene.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                const currentZoom = camera.getAttribute('zoom') || 1;
-                const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
-                const newZoom = Math.max(0.5, Math.min(3, currentZoom * zoomDelta));
-                camera.setAttribute('zoom', newZoom);
-                console.log('Camera zoom (wheel):', newZoom);
-            });
-            
-            console.log('Mobile camera zoom controls initialized');
         </script>
     </body>
 </html>
